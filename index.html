@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0"> -->
+        <title>Game</title>
+        <script src="gl-matrix-min.js" defer></script>
+        <script src="gl-lib.js" defer></script>
+        <script src="definitions.js" defer></script>
+        <script src="main.js" defer></script>
+        <style>
+            body {
+                margin: 0;
+            }
+
+            img {
+                display: block;
+                width: 100%;
+            }
+
+            #canvas {
+                display: block;
+                width: 100%;
+                height: 100vh;
+                /* cursor: pointer; */
+            }
+
+            .controlButton {
+                position: absolute;
+                width: 2.5rem;
+                padding: 0;
+                right: 0;
+                top: 100vh;
+                transform: translate(-50%, -150%);
+                background-color: rgba(0, 0, 0, 0.2);
+                border: none;
+                border-radius: 0.3rem;
+            }
+
+            .controlButton:hover {
+                background-color: rgba(0, 0, 0, 0.5);
+            }
+
+            @media not all and (pointer: fine) {
+                html {
+                    font-size: 3em;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="canvas"></canvas>
+        <button id="fullscreen" class="controlButton" type="button">
+            <img src="fullscreen.svg" alt="fullscreen">
+        </button>
+        <p>This is a work-in-pogress 3D game engine written in pure JavaScript, utilizing the WebGL API. It will hopefully run on all platforms, support procedural generation and allow for modification of the terrain.</p>
+    </body>
+</html>
