@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0"> -->
-        <title>Game</title>
+        <title>WebGL Demo</title>
         <script src="gl-matrix-min.js" defer></script>
         <script src="gl-lib.js" defer></script>
         <script src="definitions.js" defer></script>
@@ -11,6 +11,14 @@
         <style>
             body {
                 margin: 0;
+                background-color: #0f0f0f;
+                color: #f0f0f0;
+            }
+
+            section {
+                margin: auto;
+                max-width: 35rem;
+                text-align: center;
             }
 
             img {
@@ -53,6 +61,9 @@
         <button id="fullscreen" class="controlButton" type="button">
             <img src="fullscreen.svg" alt="fullscreen">
         </button>
-        <p>This is a work-in-pogress 3D game engine written in pure JavaScript, utilizing the WebGL API. It will hopefully run on all platforms, support procedural generation and allow for modification of the terrain.</p>
+        <section>
+            <h1>WebGL Demo</h1>
+            <p>This is a work-in-pogress 3D game engine written in pure JavaScript, utilizing the WebGL API. It will hopefully run on all platforms, support procedural generation and allow for modification of the terrain.</p>
+        </section>
     </body>
 </html>
