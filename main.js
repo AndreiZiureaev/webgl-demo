@@ -16,8 +16,10 @@ function main() {
     }
 
     const fullscreen = $('#fullscreen');
+    let fullscreenEvent = 'fullscreenchange';
     if (!canvas.requestFullscreen) {
         canvas.requestFullscreen = canvas.webkitRequestFullscreen;
+        fullscreenEvent = 'webkitfullscreenchange';
     }
 
     const mouseSupport = matchMedia('(any-pointer: fine)').matches;
@@ -79,12 +81,14 @@ function main() {
     if (mouseSupport) document.addEventListener('pointerlockchange', () => {
         if (document.pointerLockElement === canvas) {
             requestFocus();
+            document.addEventListener('mousemove', handleMouseMove);
         } else {
+            document.removeEventListener('mousemove', handleMouseMove);
             loseFocus();
         }
     });
 
-    document.addEventListener('fullscreenchange', () => {
+    document.addEventListener(fullscreenEvent, () => {
         if (
             document.fullscreenElement === canvas ||
             document.webkitFullscreenElement === canvas
@@ -112,17 +116,8 @@ function main() {
         document.addEventListener('keyup', handleKeyUp);
         document.addEventListener('keydown', handleKeyDown);
 
-        if (mouseSupport) {
-            if (document.pointerLockElement !== canvas) {
-                canvas.requestPointerLock();
-            }
-
-            document.addEventListener('mousemove', handleMouseMove);
-        }
-
         state.active = true;
         if (state.frameID === 0) state.frameID = requestAnimationFrame(render);
-
     }
 
     function loseFocus() {
@@ -130,10 +125,11 @@ function main() {
         state.frameID = 0;
         state.active = false;
 
-        document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('keydown', handleKeyDown);
         document.removeEventListener('keyup', handleKeyUp);
         fullscreen.style.visibility = 'visible';
+
+        document.exitPointerLock();
     }
 
     function handleKeyDown(event) {
