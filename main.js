@@ -41,6 +41,8 @@ function main() {
         zNear: 0.1,
         zFar: 200,
         timeStamp: performance.now(),
+        active: false,
+        frameID: 0,
 
         programs,
         buffers,
@@ -68,22 +70,33 @@ function main() {
     resize(gl, state);
     window.addEventListener('resize', () => {
         resize(gl, state);
-    });
 
-    document.addEventListener('pointerlockchange', () => {
-        if (document.pointerLockElement === canvas) {
-            fullscreen.style.visibility = 'hidden';
-            document.addEventListener('keyup', handleKeyUp);
-            document.addEventListener('keydown', handleKeyDown);
-            document.addEventListener('mousemove', handleMouseMove);
-        } else {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('keydown', handleKeyDown);
-            document.removeEventListener('keyup', handleKeyUp);
-            fullscreen.style.visibility = 'visible';
+        if (!state.active) {
+            render(state.timeStamp);
         }
     });
 
+    if (mouseSupport) document.addEventListener('pointerlockchange', () => {
+        if (document.pointerLockElement === canvas) {
+            requestFocus();
+        } else {
+            loseFocus();
+        }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+        if (
+            document.fullscreenElement === canvas ||
+            document.webkitFullscreenElement === canvas
+        ) {
+            requestFocus();
+        } else {
+            loseFocus();
+        }
+    });
+
+    // Handle all clicks on the canvas, but only request pointer lock if a
+    // pointer is supported.
     canvas.addEventListener('click', () => {
         if (mouseSupport && document.pointerLockElement !== canvas) {
             canvas.requestPointerLock();
@@ -93,6 +106,35 @@ function main() {
     fullscreen.addEventListener('click', () => {
         canvas.requestFullscreen();
     });
+
+    function requestFocus() {
+        fullscreen.style.visibility = 'hidden';
+        document.addEventListener('keyup', handleKeyUp);
+        document.addEventListener('keydown', handleKeyDown);
+
+        if (mouseSupport) {
+            if (document.pointerLockElement !== canvas) {
+                canvas.requestPointerLock();
+            }
+
+            document.addEventListener('mousemove', handleMouseMove);
+        }
+
+        state.active = true;
+        if (state.frameID === 0) state.frameID = requestAnimationFrame(render);
+
+    }
+
+    function loseFocus() {
+        cancelAnimationFrame(state.frameID);
+        state.frameID = 0;
+        state.active = false;
+
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('keyup', handleKeyUp);
+        fullscreen.style.visibility = 'visible';
+    }
 
     function handleKeyDown(event) {
         actions.add(event.keyCode);
@@ -119,9 +161,11 @@ function main() {
         calculateViewProjectionMatrix(state);
         drawFaces(gl, state);
         drawLines(gl, state);
-        requestAnimationFrame(render);
+
+        if (state.active) state.frameID = requestAnimationFrame(render);
     }
-    requestAnimationFrame(render);
+
+    render(state.timeStamp);
 }
 
 function resize(gl, state) {
