@@ -21,8 +21,12 @@ function main() {
         canvas.requestFullscreen = canvas.webkitRequestFullscreen;
         fullscreenEvent = 'webkitfullscreenchange';
     }
+    function canvasIsFullscreen() {
+        return document.fullscreenElement === canvas ||
+            document.webkitFullscreenElement === canvas;
+    }
 
-    const mouseSupport = matchMedia('(any-pointer: fine)').matches;
+    const hasMouseSupport = matchMedia('(any-pointer: fine)').matches;
 
     const programs = initPrograms(gl);
     const buffers = initBuffers(gl);
@@ -78,7 +82,7 @@ function main() {
         }
     });
 
-    if (mouseSupport) document.addEventListener('pointerlockchange', () => {
+    document.addEventListener('pointerlockchange', () => {
         if (document.pointerLockElement === canvas) {
             requestFocus();
             document.addEventListener('mousemove', handleMouseMove);
@@ -89,21 +93,22 @@ function main() {
     });
 
     document.addEventListener(fullscreenEvent, () => {
-        if (
-            document.fullscreenElement === canvas ||
-            document.webkitFullscreenElement === canvas
-        ) {
+        if (canvasIsFullscreen()) {
             requestFocus();
         } else {
             loseFocus();
         }
     });
 
-    // Handle all clicks on the canvas, but only request pointer lock if a
-    // pointer is supported.
     canvas.addEventListener('click', () => {
-        if (mouseSupport && document.pointerLockElement !== canvas) {
-            canvas.requestPointerLock();
+        if (hasMouseSupport) {
+            if (document.pointerLockElement !== canvas) {
+                canvas.requestPointerLock();
+            }
+        } else {
+            if (!canvasIsFullscreen()) {
+                canvas.requestFullscreen();
+            }
         }
     });
 
@@ -111,6 +116,10 @@ function main() {
         canvas.requestFullscreen();
     });
 
+    // Can be called many times in a row because the event listeners are only
+    // added once (handlers are function references, so they are considered the
+    // same in each call). The frameID check prevents multiple render calls per
+    // frame.
     function requestFocus() {
         fullscreen.style.visibility = 'hidden';
         document.addEventListener('keyup', handleKeyUp);
@@ -129,6 +138,7 @@ function main() {
         document.removeEventListener('keyup', handleKeyUp);
         fullscreen.style.visibility = 'visible';
 
+        // Required by Edge.
         document.exitPointerLock();
     }
 
