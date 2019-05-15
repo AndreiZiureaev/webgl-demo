@@ -41,6 +41,7 @@ function main() {
         viewAngle: { horizontal: 0, vertical: 0 },
         maxSpeed: 0.02,
         mouseSensitivity: 0.002,
+        touchSensitivity: 0.002,
         arrowSensitivity: 0.001,
         FOV: 90 * RADIANS_PER_DEGREE,
         aspectRatio: 1,
@@ -49,6 +50,15 @@ function main() {
         timeStamp: performance.now(),
         active: false,
         frameID: 0,
+
+        touchControls: {
+            dx: 0,
+            dz: 0,
+            movement: { touchID: null, x: 0, y: 0 },
+            view: { touchID: null, horizontal: 0, vertical: 0 },
+            midpoint: 0,
+            movementRadiusPx: 0,
+        },
 
         programs,
         buffers,
@@ -124,6 +134,7 @@ function main() {
         fullscreen.style.visibility = 'hidden';
         document.addEventListener('keyup', handleKeyUp);
         document.addEventListener('keydown', handleKeyDown);
+        canvas.addEventListener('touchstart', handleTouchStart);
 
         state.active = true;
         if (state.frameID === 0) state.frameID = requestAnimationFrame(render);
@@ -134,12 +145,118 @@ function main() {
         state.frameID = 0;
         state.active = false;
 
+        canvas.removeEventListener('touchstart', handleTouchStart);
         document.removeEventListener('keydown', handleKeyDown);
         document.removeEventListener('keyup', handleKeyUp);
         fullscreen.style.visibility = 'visible';
 
         // Required by Edge.
         document.exitPointerLock();
+    }
+
+    function handleTouchStart(event) {
+        if (
+            state.touchControls.movement.touchID === null &&
+            state.touchControls.view.touchID === null
+        ) {
+            canvas.addEventListener('touchmove', handleTouchMove);
+            canvas.addEventListener('touchend', handleTouchEnd);
+            canvas.addEventListener('touchcancel', handleTouchEnd);
+        }
+
+        for (let touch of event.changedTouches) {
+            if (touch.clientX <= state.touchControls.midpoint) {
+                handleTouchStartMovement(touch);
+            } else {
+                handleTouchStartView(touch);
+            }
+        }
+    }
+
+    function handleTouchStartMovement(touch) {
+        if (state.touchControls.movement.touchID === null) {
+            state.touchControls.movement.touchID = touch.identifier;
+            state.touchControls.movement.x = touch.clientX;
+            state.touchControls.movement.y = touch.clientY;
+        }
+    }
+
+    function handleTouchStartView(touch) {
+        if (state.touchControls.view.touchID === null) {
+            state.touchControls.view.touchID = touch.identifier;
+            state.touchControls.view.horizontal = touch.clientX;
+            state.touchControls.view.vertical = touch.clientY;
+        }
+    }
+
+    function handleTouchMove(event) {
+        for (let touch of event.changedTouches) {
+            if (touch.identifier === state.touchControls.movement.touchID) {
+                handleTouchMoveMovement(touch);
+            } else if (touch.identifier === state.touchControls.view.touchID) {
+                handleTouchMoveView(touch);
+            }
+        }
+    }
+
+    function handleTouchMoveMovement(touch) {
+        let dx = touch.clientX - state.touchControls.movement.x;
+        let dz = touch.clientY - state.touchControls.movement.y;
+
+        if (dx === 0 && dz === 0) {
+            return;
+        }
+
+        let radius = sqrt(dx * dx + dz * dz) / state.touchControls.movementRadiusPx;
+
+        if (radius > 1) {
+            radius = 1;
+        }
+
+        const angle = atan2(dz, dx);
+
+        state.touchControls.dx = cos(angle) * radius;
+        state.touchControls.dz = sin(angle) * radius;
+    }
+
+    function handleTouchMoveView(touch) {
+        updateViewAngle(
+            state,
+            -(touch.clientX - state.touchControls.view.horizontal) * state.touchSensitivity,
+            -(touch.clientY - state.touchControls.view.vertical) * state.touchSensitivity
+        );
+
+        state.touchControls.view.horizontal = touch.clientX;
+        state.touchControls.view.vertical = touch.clientY;
+    }
+
+    function handleTouchEnd(event) {
+        for (let touch of event.changedTouches) {
+            if (touch.identifier === state.touchControls.movement.touchID) {
+                handleTouchEndMovement();
+            } else if (touch.identifier === state.touchControls.view.touchID) {
+                handleTouchEndView();
+            }
+        }
+
+        if (
+            state.touchControls.movement.touchID === null &&
+            state.touchControls.view.touchID === null
+        ) {
+            canvas.removeEventListener('touchcancel', handleTouchEnd);
+            canvas.removeEventListener('touchend', handleTouchEnd);
+            canvas.removeEventListener('touchmove', handleTouchMove);
+        }
+    }
+
+    function handleTouchEndMovement() {
+        state.touchControls.movement.touchID = null;
+        state.touchControls.dx = 0;
+        state.touchControls.dz = 0;
+    }
+
+    function handleTouchEndView() {
+        state.touchControls.view.touchID = null;
     }
 
     function handleKeyDown(event) {
@@ -180,6 +297,9 @@ function resize(gl, state) {
 
     state.aspectRatio = viewportWidth / viewportHeight;
     calculateProjectionMatrix(state);
+
+    state.touchControls.midpoint = floor(viewportWidth / 2);
+    state.touchControls.movementRadiusPx = floor(viewportWidth / 3);
 
     if (viewportWidth !== gl.canvas.width) {
         gl.canvas.width = viewportWidth;
@@ -260,30 +380,43 @@ function handleActions(state, elapsed) {
         dx = cos(angle);
         dz = sin(angle);
 
-        vec3.set(
-            state.displacement,
-            dx * state.maxSpeed * elapsed,
-            0,
-            dz * state.maxSpeed * elapsed
-        );
-        vec3.rotateX(
-            state.displacement,
-            state.displacement,
-            ORIGIN,
-            state.viewAngle.vertical
-        );
-        vec3.rotateY(
-            state.displacement,
-            state.displacement,
-            ORIGIN,
-            state.viewAngle.horizontal
-        );
-        vec3.subtract(
-            state.translation,
-            state.translation,
-            state.displacement
+        displace(state, dx, dz, state.maxSpeed * elapsed);
+    }
+
+    if (state.touchControls.dx !== 0 || state.touchControls.dz !== 0) {
+        displace(
+            state,
+            state.touchControls.dx,
+            state.touchControls.dz,
+            state.maxSpeed * elapsed
         );
     }
+}
+
+function displace(state, dx, dz, multiplier) {
+    vec3.set(
+        state.displacement,
+        dx * multiplier,
+        0,
+        dz * multiplier
+    );
+    vec3.rotateX(
+        state.displacement,
+        state.displacement,
+        ORIGIN,
+        state.viewAngle.vertical
+    );
+    vec3.rotateY(
+        state.displacement,
+        state.displacement,
+        ORIGIN,
+        state.viewAngle.horizontal
+    );
+    vec3.subtract(
+        state.translation,
+        state.translation,
+        state.displacement
+    );
 }
 
 function calculateProjectionMatrix(state) {

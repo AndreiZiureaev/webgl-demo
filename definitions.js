@@ -1,7 +1,7 @@
 'use strict';
 
 const { mat4, vec3 } = glMatrix;
-const { PI, atan2, sin, cos, random } = Math;
+const { PI, atan2, sin, cos, random, floor, sqrt } = Math;
 
 const TAU = 2 * PI;
 const HALF_PI = PI / 2;
