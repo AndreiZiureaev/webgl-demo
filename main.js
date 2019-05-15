@@ -132,9 +132,10 @@ function main() {
     // frame.
     function requestFocus() {
         fullscreen.style.visibility = 'hidden';
+        canvas.style.touchAction = 'none';
         document.addEventListener('keyup', handleKeyUp);
         document.addEventListener('keydown', handleKeyDown);
-        canvas.addEventListener('touchstart', handleTouchStart);
+        canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
 
         state.active = true;
         if (state.frameID === 0) state.frameID = requestAnimationFrame(render);
@@ -145,9 +146,10 @@ function main() {
         state.frameID = 0;
         state.active = false;
 
-        canvas.removeEventListener('touchstart', handleTouchStart);
+        canvas.removeEventListener('touchstart', handleTouchStart, { passive: false });
         document.removeEventListener('keydown', handleKeyDown);
         document.removeEventListener('keyup', handleKeyUp);
+        canvas.style.touchAction = 'auto';
         fullscreen.style.visibility = 'visible';
 
         // Required by Edge.
@@ -159,7 +161,7 @@ function main() {
             state.touchControls.movement.touchID === null &&
             state.touchControls.view.touchID === null
         ) {
-            canvas.addEventListener('touchmove', handleTouchMove);
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
             canvas.addEventListener('touchend', handleTouchEnd);
             canvas.addEventListener('touchcancel', handleTouchEnd);
         }
@@ -171,6 +173,8 @@ function main() {
                 handleTouchStartView(touch);
             }
         }
+
+        event.preventDefault();
     }
 
     function handleTouchStartMovement(touch) {
@@ -197,6 +201,8 @@ function main() {
                 handleTouchMoveView(touch);
             }
         }
+
+        event.preventDefault();
     }
 
     function handleTouchMoveMovement(touch) {
@@ -245,7 +251,7 @@ function main() {
         ) {
             canvas.removeEventListener('touchcancel', handleTouchEnd);
             canvas.removeEventListener('touchend', handleTouchEnd);
-            canvas.removeEventListener('touchmove', handleTouchMove);
+            canvas.removeEventListener('touchmove', handleTouchMove, { passive: false });
         }
     }
 
@@ -299,7 +305,7 @@ function resize(gl, state) {
     calculateProjectionMatrix(state);
 
     state.touchControls.midpoint = floor(viewportWidth / 2);
-    state.touchControls.movementRadiusPx = floor(viewportWidth / 3);
+    state.touchControls.movementRadiusPx = floor(viewportWidth / 6);
 
     if (viewportWidth !== gl.canvas.width) {
         gl.canvas.width = viewportWidth;
