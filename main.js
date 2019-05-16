@@ -41,7 +41,7 @@ function main() {
         viewAngle: { horizontal: 0, vertical: 0 },
         maxSpeed: 0.02,
         mouseSensitivity: 0.002,
-        touchSensitivity: 0.002,
+        touchSensitivity: 0.004,
         arrowSensitivity: 0.001,
         FOV: 90 * RADIANS_PER_DEGREE,
         aspectRatio: 1,
@@ -135,7 +135,11 @@ function main() {
         canvas.style.touchAction = 'none';
         document.addEventListener('keyup', handleKeyUp);
         document.addEventListener('keydown', handleKeyDown);
+
         canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+        canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+        canvas.addEventListener('touchend', handleTouchEnd);
+        canvas.addEventListener('touchcancel', handleTouchEnd);
 
         state.active = true;
         if (state.frameID === 0) state.frameID = requestAnimationFrame(render);
@@ -146,7 +150,15 @@ function main() {
         state.frameID = 0;
         state.active = false;
 
+        canvas.removeEventListener('touchcancel', handleTouchEnd);
+        canvas.removeEventListener('touchend', handleTouchEnd);
+        canvas.removeEventListener('touchmove', handleTouchMove, { passive: false });
         canvas.removeEventListener('touchstart', handleTouchStart, { passive: false });
+
+        // Reset both touch trackers
+        handleTouchEndMovement();
+        handleTouchEndView();
+
         document.removeEventListener('keydown', handleKeyDown);
         document.removeEventListener('keyup', handleKeyUp);
         canvas.style.touchAction = 'auto';
@@ -157,15 +169,6 @@ function main() {
     }
 
     function handleTouchStart(event) {
-        if (
-            state.touchControls.movement.touchID === null &&
-            state.touchControls.view.touchID === null
-        ) {
-            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-            canvas.addEventListener('touchend', handleTouchEnd);
-            canvas.addEventListener('touchcancel', handleTouchEnd);
-        }
-
         for (let touch of event.changedTouches) {
             if (touch.clientX <= state.touchControls.midpoint) {
                 handleTouchStartMovement(touch);
@@ -206,23 +209,22 @@ function main() {
     }
 
     function handleTouchMoveMovement(touch) {
-        let dx = touch.clientX - state.touchControls.movement.x;
-        let dz = touch.clientY - state.touchControls.movement.y;
 
-        if (dx === 0 && dz === 0) {
-            return;
-        }
+        // Normalized offsets
+        let dx = (touch.clientX - state.touchControls.movement.x) / state.touchControls.movementRadiusPx;
+        let dz = (touch.clientY - state.touchControls.movement.y) / state.touchControls.movementRadiusPx;
 
-        let radius = sqrt(dx * dx + dz * dz) / state.touchControls.movementRadiusPx;
+        const radius = sqrt(dx * dx + dz * dz);
 
+        // Cap the radius at 1
         if (radius > 1) {
-            radius = 1;
+            const angle = atan2(dz, dx);
+            dx = cos(angle);
+            dz = sin(angle);
         }
 
-        const angle = atan2(dz, dx);
-
-        state.touchControls.dx = cos(angle) * radius;
-        state.touchControls.dz = sin(angle) * radius;
+        state.touchControls.dx = dx;
+        state.touchControls.dz = dz;
     }
 
     function handleTouchMoveView(touch) {
@@ -243,15 +245,6 @@ function main() {
             } else if (touch.identifier === state.touchControls.view.touchID) {
                 handleTouchEndView();
             }
-        }
-
-        if (
-            state.touchControls.movement.touchID === null &&
-            state.touchControls.view.touchID === null
-        ) {
-            canvas.removeEventListener('touchcancel', handleTouchEnd);
-            canvas.removeEventListener('touchend', handleTouchEnd);
-            canvas.removeEventListener('touchmove', handleTouchMove, { passive: false });
         }
     }
 
