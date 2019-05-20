@@ -97,15 +97,7 @@ function initBuffers(gl) {
 }
 
 function heightAt(a, b) {
-    const value = noise.perlin2(a / 25, b / 25) * 50;
-    const intValue = floor(value);
-
-    // Make the precision 0.5
-    if (value - intValue < 0.5) {
-        return intValue;
-    }
-
-    return intValue + 0.5;
+    return noise.perlin2(a / 25, b / 25) * 50;
 }
 
 function initPositionBuffer(gl, dimensions) {
