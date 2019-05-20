@@ -96,10 +96,23 @@ function initBuffers(gl) {
     };
 }
 
+function heightAt(a, b) {
+    const value = noise.perlin2(a / 25, b / 25) * 50;
+    const intValue = floor(value);
+
+    // Make the precision 0.5
+    if (value - intValue < 0.5) {
+        return intValue;
+    }
+
+    return intValue + 0.5;
+}
 
 function initPositionBuffer(gl, dimensions) {
     const positionBuffer = gl.createBuffer();
     const positions = [];
+
+    noise.seed(0.123);
 
     for (let z = 0; z < dimensions.lengthBlocks; z++) {
         const z1 = z + 0.5;
@@ -108,10 +121,10 @@ function initPositionBuffer(gl, dimensions) {
             const x1 = x + 0.5;
 
             positions.push(
-                x,  0, z,
-                x1, 0, z,
-                x,  0, z1,
-                x1, 0, z1
+                x,  heightAt(x, z), z,
+                x1, heightAt(x1, z), z,
+                x, heightAt(x, z1), z1,
+                x1, heightAt(x1, z1), z1
             );
         }
     }
@@ -197,8 +210,8 @@ function initLineElementBuffer(gl, dimensions, triangleElements) {
     const lineElementBuffer = gl.createBuffer();
     const elements = [];
 
-    for (let z = 0; z < dimensions.lengthBlocks - 1; z += 16) {
-        for (let x = 0; x < dimensions.widthBlocks - 1; x += 16) {
+    for (let z = 0; z < dimensions.lengthBlocks - 1; z += 2) {
+        for (let x = 0; x < dimensions.widthBlocks - 1; x += 2) {
             bufferLineElements(elements, dimensions, triangleElements, x, z);
         }
     }

@@ -46,7 +46,7 @@ function main() {
         FOV: 90 * RADIANS_PER_DEGREE,
         aspectRatio: 1,
         zNear: 0.1,
-        zFar: 200,
+        zFar: 1000,
         timeStamp: performance.now(),
         active: false,
         frameID: 0,
