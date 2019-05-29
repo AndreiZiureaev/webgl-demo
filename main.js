@@ -1,7 +1,5 @@
 'use strict';
 
-main();
-
 function $(query) {
     return document.querySelector(query);
 }
